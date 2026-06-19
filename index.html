@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>GWT Product-Based Comparison Engine — Status</title>
+<style>
+  :root{
+    --ink:#14202b; --ink-2:#21323f;
+    --paper:#f4f6f4; --card:#ffffff;
+    --line:#e3e7e3; --line-strong:#cdd4cd;
+    --muted:#5c6b72; --text:#1b2730;
+    --ref:#5b7c99; --shared:#0f766e; --target:#c68a2e;
+    --ok:#2e7d5b; --watch:#b7791f; --risk:#b23a3a;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:var(--sans);color:var(--text);background:var(--paper);-webkit-font-smoothing:antialiased;line-height:1.45}
+  .sheet{max-width:1040px;margin:0 auto;padding:18px}
+  .frame{background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden;
+    box-shadow:0 1px 0 rgba(20,32,43,.03),0 10px 30px -22px rgba(20,32,43,.35)}
+
+  .head{background:var(--ink);color:#fff;padding:18px 22px 16px;display:grid;grid-template-columns:1fr auto;gap:14px 20px;align-items:start}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:#8fa6b0;margin:0 0 6px}
+  .title{font-size:23px;font-weight:650;letter-spacing:-.01em;margin:0;line-height:1.15}
+  .subtitle{margin:5px 0 0;font-size:13px;color:#aebcc4;max-width:64ch}
+  .head-meta{text-align:right;display:flex;flex-direction:column;gap:9px;align-items:flex-end;min-width:200px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16)}
+  .pill.stage{background:rgba(198,138,46,.16);border-color:rgba(198,138,46,.4);color:#f0d3a3}
+  .dot{width:8px;height:8px;border-radius:50%;background:#56d6a0}
+  .status-note{font-size:12px;color:#c4d0d6;max-width:26ch}
+  .meta-line{font-family:var(--mono);font-size:11px;color:#8fa6b0;letter-spacing:.04em}
+  .meta-line b{color:#dde6ea;font-weight:600}
+
+  .section-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0}
+
+  .hero{padding:22px 22px 20px;border-bottom:1px solid var(--line)}
+  .hero .section-label{margin-bottom:18px}
+  .track{display:flex;position:relative;margin:0 6px}
+  .track::before{content:"";position:absolute;top:11px;left:5%;right:5%;height:2px;background:var(--line-strong);z-index:0}
+  .phase{flex:1;display:flex;flex-direction:column;align-items:center;gap:9px;position:relative;z-index:1;text-align:center}
+  .node{width:24px;height:24px;border-radius:50%;background:var(--card);border:2px solid var(--line-strong);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:11px;font-weight:700;color:var(--muted)}
+  .phase.done .node{background:var(--shared);border-color:var(--shared);color:#fff}
+  .phase.current .node{background:var(--target);border-color:var(--target);color:#fff;box-shadow:0 0 0 5px rgba(198,138,46,.16)}
+  .phase .plabel{font-size:11.5px;font-weight:600;color:var(--text);max-width:14ch}
+  .phase.upcoming .plabel{color:var(--muted);font-weight:500}
+  .phase.current .plabel{color:var(--target);font-weight:700}
+  .phase .ptag{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .phase.current .ptag{color:var(--target)}
+
+  .deploy-note{display:flex;align-items:center;gap:10px;margin-top:18px;padding:10px 14px;border:1px solid #f0dcc4;background:#fdf6ec;border-radius:5px;
+    font-size:12.5px;color:#7a5a1c}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+  .col{background:var(--card);padding:16px 20px;min-width:0}
+  .col h3{font-size:13px;font-weight:650;margin:0 0 2px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+  .col h3::before{content:"";width:3px;height:14px;border-radius:2px;background:var(--ink-2)}
+  .col.progress h3::before{background:var(--ok)}
+  .col.next h3::before{background:var(--target)}
+  .col .hint{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 11px}
+  .col ul,.col ol{margin:0;padding:0;list-style:none}
+  .col li{position:relative;padding:0 0 9px 18px;font-size:12.5px;color:var(--text);line-height:1.4}
+  .col.progress li::before{content:"\2713";position:absolute;left:1px;top:0;font-family:var(--mono);font-size:11px;color:var(--ok)}
+  .col.next ol{counter-reset:step}
+  .col.next li{counter-increment:step}
+  .col.next li::before{content:counter(step);position:absolute;left:0;top:1px;font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;
+    background:var(--target);width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+
+  .notes{padding:18px 22px 8px}
+  .notes-grid{display:grid;grid-template-columns:200px 1fr;gap:22px;align-items:center;margin-top:12px}
+  .venn{width:100%;max-width:200px}
+  .venn-cap{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted);text-align:center;margin-top:4px}
+  .note-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+  .ncard{background:var(--card);padding:13px 14px}
+  .ncard .nt{font-size:12.5px;font-weight:650;margin:0 0 5px;display:flex;align-items:baseline;gap:7px}
+  .ncard .nt .ix{font-family:var(--mono);font-size:10px;color:var(--target);font-weight:700}
+  .ncard .nb{font-size:11.5px;color:var(--muted);line-height:1.4;margin:0}
+  .notes-lead{font-size:12.5px;color:var(--text);margin:6px 0 0}
+
+  .review{border-top:1px solid var(--line)}
+  .review-head{padding:18px 22px 4px}
+  .review-flag{display:flex;gap:8px;align-items:baseline;margin-top:10px;padding:9px 13px;border:1px solid #cfe6db;background:#f1f9f5;border-radius:5px;font-size:12px;color:#235746;line-height:1.4}
+  .review-flag b{color:#14503c;font-weight:700;white-space:nowrap}
+  .col.disc h3::before{background:var(--ref)}
+  .col.review-next h3::before{background:var(--shared)}
+  .col.disc li::before{content:"";position:absolute;left:2px;top:6px;width:5px;height:5px;border-radius:50%;background:var(--ref)}
+  .col.review-next ol{counter-reset:rstep}
+  .col.review-next li{counter-increment:rstep}
+  .col.review-next li::before{content:counter(rstep);position:absolute;left:0;top:1px;font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;
+    background:var(--shared);width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .owner{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--muted);white-space:nowrap}
+
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 22px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .updated{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)}
+  .updated b{color:var(--text);font-weight:600}
+
+  @media (max-width:760px){
+    .head,.cols,.notes-grid,.note-cards{grid-template-columns:1fr}
+    .head-meta{text-align:left;align-items:flex-start}.badges{justify-content:flex-start}
+    .track{overflow-x:auto}.phase{min-width:90px}
+    .venn{margin:0 auto}
+  }
+  @media print{
+    body{background:#fff}.sheet{padding:0;max-width:none}.frame{border:none;box-shadow:none;border-radius:0}
+  }
+</style>
+</head>
+<body>
+<div class="sheet"><div class="frame">
+
+  <div class="head status-ontrack">
+    <div>
+      <p class="eyebrow">Executive Project Status</p>
+      <h1 class="title">GWT Product-Based Comparison Engine</h1>
+      <p class="subtitle">A scope model that rolls attribute-level data up the product hierarchy to compare implementations and surface where capability, intensity and value concentrate.</p>
+    </div>
+    <div class="head-meta">
+      <div class="badges">
+        <span class="pill stage"><span class="dot"></span>Alpha</span>
+        <span class="pill"><span class="dot"></span>On track</span>
+      </div>
+      <span class="status-note">Alpha build prototyped with PBM NASPO &amp; PBM MO</span>
+      <span class="meta-line"><b>June 18, 2026</b></span>
+      <span class="meta-line">PM: <b>Jeremy Morse</b></span>
+    </div>
+  </div>
+
+  <div class="hero">
+    <p class="section-label">Development stage</p>
+    <div class="track">
+      <div class="phase done"><div class="node">&#10003;</div><div class="plabel">Prototype</div><div class="ptag">Done</div></div>
+      <div class="phase current"><div class="node">2</div><div class="plabel">Alpha</div><div class="ptag">Current</div></div>
+      <div class="phase upcoming"><div class="node">3</div><div class="plabel">Internal validation</div><div class="ptag">Upcoming</div></div>
+      <div class="phase upcoming"><div class="node">4</div><div class="plabel">GWT POC</div><div class="ptag">Upcoming</div></div>
+      <div class="phase upcoming"><div class="node">5</div><div class="plabel">iPE</div><div class="ptag">Upcoming</div></div>
+    </div>
+    <div class="deploy-note">Deployment update: Alpha has been deployed to a test environment, access forthcoming.</div>
+  </div>
+
+  <div class="cols">
+    <div class="col progress">
+      <h3>Progress to date</h3><p class="hint">Completed</p>
+      <ul>
+        <li>Alpha product-based comparison workflow operational across full scope PBM attribute set.</li>
+        <li>Full-scope PBM generated from all sourced PBM deals (incl. GA NASPO)</li>
+        <li>Alpha compares Full-Scope PBM (&quot;Total Attributes&quot;) vs PBM NASPO (&quot;Reference Matches&quot;) vs PBM MO (&quot;Comparison Matches&quot;).</li>
+      </ul>
+    </div>
+    <div class="col next">
+      <h3>Next steps</h3><p class="hint">Planned</p>
+      <ol>
+        <li>Internal validation of the model and outputs</li>
+        <li>Discuss weighting &amp; prioritization — pricing, solutioning, other?</li>
+        <li>Automate data parsing for comparison</li>
+        <li>Test and validate</li>
+        <li>Deploy to GWT POC Box</li>
+        <li>Natural-language chat against the dataset</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="notes">
+    <p class="section-label">Items of note — why more datasets matter</p>
+    <div class="notes-grid">
+      <div>
+        <svg class="venn" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Conceptual Venn diagram of overlapping product capability sets, expanding as datasets are added">
+          <circle cx="78" cy="105" r="40" fill="#5b7c99" fill-opacity="0.5" style="mix-blend-mode:multiply"/>
+          <circle cx="122" cy="105" r="40" fill="#c68a2e" fill-opacity="0.5" style="mix-blend-mode:multiply"/>
+          <circle cx="100" cy="68" r="40" fill="#0f766e" fill-opacity="0.5" style="mix-blend-mode:multiply"/>
+          <circle cx="100" cy="86" r="64" fill="none" stroke="#5c6b72" stroke-width="1.4" stroke-dasharray="4 5" opacity="0.7"/>
+          <text x="100" y="14" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#5c6b72">+ each new dataset</text>
+        </svg>
+        <div class="venn-cap">universe expands as deals are added</div>
+      </div>
+      <div>
+        <p class="notes-lead">Each new implementation / dataset added to the model does three things:</p>
+        <div class="note-cards" style="margin-top:11px">
+          <div class="ncard"><p class="nt"><span class="ix">1</span>Expands the universe</p><p class="nb">Widens the kitchen-sink Venn — the total universe of represented product capabilities.</p></div>
+          <div class="ncard"><p class="nt"><span class="ix">2</span>Reveals intensity &amp; value</p><p class="nb">Highlights different areas of depth, intensity and value across deals.</p></div>
+          <div class="ncard"><p class="nt"><span class="ix">3</span>Informs roadmap &amp; pricing</p><p class="nb">Builds data to rank highest-demand products, sub-products, capabilities and features for roadmap prioritization and value-based pricing.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="review">
+    <div class="review-head">
+      <p class="section-label">Status review — discussion &amp; next steps</p>
+    </div>
+    <div class="cols">
+      <div class="col disc">
+        <h3>Discussion points</h3><p class="hint">Highlights</p>
+        <ul>
+          <li>Shift the comparison baseline from the kitchen-sink universe to NASPO.</li>
+          <li>Target output: a &ldquo;consumer-reports sticker&rdquo; summary across ~12 scope areas, with drill-down to driving attributes and an LLM-generated narrative.</li>
+          <li>Gainwell product data to be added to the kitchen-sink universe as an additional dataset.</li>
+        </ul>
+      </div>
+      <div class="col review-next">
+        <h3>Agreed next steps</h3><p class="hint">Owners noted</p>
+        <ol>
+          <li>Draw the process-flow diagram for loading a new deal. <span class="owner">Patrick, Jeremy</span></li>
+          <li>Design attribute weighting and scaling.</li>
+          <li>Use NASPO as baseline for % fit calculations.</li>
+          <li>SMEs validate and provide weighting &amp; scalers at the scope area level.</li>
+          <li>Source Gainwell product data &amp; add to kitchen-sink universe.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="updated">Last updated <b>June 19, 2026</b> &middot; GWT Product-Based Comparison Engine</span>
+  </div>
+
+</div></div>
+</body>
+</html>
